@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#0097e6</color>
+    <color name="colorPrimaryDark">#192a56</color>
+    <color name="colorAccent">#00a8ff</color>
+    <color name="ELECTROMAGNETIC">#2f3640</color>
+    <color name="HINTofPENSIVE">#dcdde1</color>
+    <color name="LynxWhite">#f5f6fa</color>
+    <color name="BlueNights">#353b48</color>
+</resources>
