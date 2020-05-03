@@ -51,7 +51,6 @@ public class MainActivity extends AppCompatActivity
     protected CameraCaptureSession cameraCaptureSessions;
     private Handler mBackgroundHandler;
     private ImageReader imageReader;
-    private File file;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
 
     //Rotation
@@ -86,10 +85,100 @@ public class MainActivity extends AppCompatActivity
     }
 
     //Detecting camera hardware
-    private boolean checkCameraHardware(Context context)
+    private void checkCameraHardware()
     {
-        return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY);
+        if (getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY))
+        {
+            Log.e(TAG, "This device has camera");
+        }
+        else
+        {
+            Log.e(TAG, "No camera on this device");
+            Toast.makeText(MainActivity.this, "No camera on this device", Toast.LENGTH_LONG).show();
+        }
     }
+
+    //Accessing camera
+    private void openCamera()
+    {
+        checkCameraHardware();
+        CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        Log.e(TAG, "is camera open");
+        try
+        {
+            cameraId = manager.getCameraIdList()[0];
+            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
+            StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            assert map != null;
+            imageDimension = chooseVideoSize(map.getOutputSizes(SurfaceTexture.class));
+
+            //Requesting Permission
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
+            {
+                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CAMERA_PERMISSION);
+                return;
+            }
+            manager.openCamera(cameraId, stateCallback, null);
+        }
+        catch (CameraAccessException e)
+        {
+            e.printStackTrace();
+        }
+        Log.e(TAG, "openCamera X");
+    }
+
+    //Checking for state of camera
+    private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback()
+    {
+        @Override
+        public void onOpened(@NonNull CameraDevice camera)
+        {
+            Log.e(TAG, "onOpened");
+            cameraDevice = camera;
+            createCameraPreview();
+        }
+
+        @Override
+        public void onDisconnected(@NonNull CameraDevice camera)
+        {
+            cameraDevice.close();
+        }
+
+        @Override
+        public void onError(@NonNull CameraDevice camera, int error)
+        {
+            cameraDevice.close();
+            cameraDevice = null;
+        }
+    };
+
+    //Creating camera preview
+    TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener()
+    {
+        @Override
+        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height)
+        {
+            openCamera();
+        }
+
+        @Override
+        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height)
+        {
+
+        }
+
+        @Override
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface)
+        {
+            return false;
+        }
+
+        @Override
+        public void onSurfaceTextureUpdated(SurfaceTexture surface)
+        {
+
+        }
+    };
 
     //SmallerPreview
     protected Size chooseVideoSize(Size[] choices)
@@ -121,87 +210,6 @@ public class MainActivity extends AppCompatActivity
 
     }
 
-    //Accessing camera
-    private void openCamera()
-    {
-        CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-        Log.e(TAG, "is camera open");
-        try
-        {
-            cameraId = manager.getCameraIdList()[0];
-            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
-            StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-            assert map != null;
-            imageDimension = chooseVideoSize(map.getOutputSizes(SurfaceTexture.class));
-
-            //Requesting Permission
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
-            {
-                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CAMERA_PERMISSION);
-                return;
-            }
-            manager.openCamera(cameraId, stateCallback, null);
-        }
-        catch (CameraAccessException e)
-        {
-            e.printStackTrace();
-        }
-        Log.e(TAG, "openCamera X");
-    }
-
-    TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener()
-    {
-        @Override
-        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height)
-        {
-            openCamera();
-        }
-
-        @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height)
-        {
-
-        }
-
-        @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface)
-        {
-            return false;
-        }
-
-        @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surface)
-        {
-
-        }
-    };
-
-    //Checking for state of camera
-    private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback()
-    {
-        @Override
-        public void onOpened(@NonNull CameraDevice camera)
-        {
-            Log.e(TAG, "onOpened");
-            cameraDevice = camera;
-            createCameraPreview();
-        }
-
-        @Override
-        public void onDisconnected(@NonNull CameraDevice camera)
-        {
-            cameraDevice.close();
-        }
-
-        @Override
-        public void onError(@NonNull CameraDevice camera, int error)
-        {
-            cameraDevice.close();
-            cameraDevice = null;
-        }
-    };
-
-    //Creating camera preview
     protected void createCameraPreview()
     {
         try
@@ -293,10 +301,6 @@ public class MainActivity extends AppCompatActivity
                         byte[] bytes = new byte[buffer.capacity()];
                         buffer.get(bytes);
                         save(bytes);
-                    }
-                    catch (FileNotFoundException e)
-                    {
-                        e.printStackTrace();
                     }
                     catch (IOException e)
                     {
