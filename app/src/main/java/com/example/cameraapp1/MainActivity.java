@@ -26,12 +26,15 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity
@@ -77,6 +80,30 @@ public class MainActivity extends AppCompatActivity
         return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY);
     }
 
+    //SmallerPreview
+    protected Size chooseVideoSize(Size[] choices) {
+        List<Size> smallEnough = new ArrayList<>();
+
+        for (Size size : choices) {
+            if (size.getWidth() == size.getHeight() * 4 / 3 && size.getWidth() <= 1080) {
+                smallEnough.add(size);
+            }
+        }
+        if (smallEnough.size() > 0) {
+            return Collections.max(smallEnough, new CompareSizeByArea());
+        }
+
+        return choices[choices.length - 1];
+    }
+    public class CompareSizeByArea implements Comparator<Size>
+    {
+        @Override
+        public int compare(Size lhs, Size rhs) {
+            return Long.signum((long) lhs.getWidth() * lhs.getHeight() -
+                    (long) rhs.getWidth() * rhs.getHeight());
+        }
+
+    }
     //Accessing camera
     private void openCamera()
     {
@@ -88,7 +115,7 @@ public class MainActivity extends AppCompatActivity
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             assert map != null;
-            imageDimension = map.getOutputSizes(SurfaceTexture.class)[0];
+            imageDimension = chooseVideoSize(map.getOutputSizes(SurfaceTexture.class));
 
             //Requesting Permission
             if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
@@ -238,7 +265,7 @@ public class MainActivity extends AppCompatActivity
             final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
             captureBuilder.addTarget(reader.getSurface());
             captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-            final File file = new File(Environment.DIRECTORY_DCIM + "/pic.jpg");
+            final File file = new File(Environment.DIRECTORY_DCIM + "/CameraApp1/pic.jpeg");
             ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener()
             {
                 @Override
@@ -253,7 +280,11 @@ public class MainActivity extends AppCompatActivity
                         buffer.get(bytes);
                         save(bytes);
                     }
-                    catch (Exception e)
+                    catch (FileNotFoundException e)
+                    {
+                        e.printStackTrace();
+                    }
+                    catch (IOException e)
                     {
                         e.printStackTrace();
                     }
