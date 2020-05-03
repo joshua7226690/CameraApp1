@@ -14,11 +14,11 @@ import android.media.ImageReader;
 import android.os.Bundle;
 import android.content.pm.PackageManager;
 import android.hardware.camera2.*;
-import android.hardware.camera2.CameraCaptureSession;
 import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
 import android.util.Size;
+import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
@@ -36,6 +36,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity
 {
@@ -51,6 +52,16 @@ public class MainActivity extends AppCompatActivity
     private Handler mBackgroundHandler;
     private ImageReader imageReader;
     private File file;
+    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
+
+    //Rotation
+    static
+    {
+        ORIENTATIONS.append(Surface.ROTATION_0, 90);
+        ORIENTATIONS.append(Surface.ROTATION_90, 0);
+        ORIENTATIONS.append(Surface.ROTATION_180, 270);
+        ORIENTATIONS.append(Surface.ROTATION_270, 180);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -81,29 +92,35 @@ public class MainActivity extends AppCompatActivity
     }
 
     //SmallerPreview
-    protected Size chooseVideoSize(Size[] choices) {
+    protected Size chooseVideoSize(Size[] choices)
+    {
         List<Size> smallEnough = new ArrayList<>();
 
-        for (Size size : choices) {
-            if (size.getWidth() == size.getHeight() * 4 / 3 && size.getWidth() <= 1080) {
+        for (Size size : choices)
+        {
+            if (size.getWidth() == size.getHeight() * 4 / 3 && size.getWidth() <= 1080)
+            {
                 smallEnough.add(size);
             }
         }
-        if (smallEnough.size() > 0) {
+        if (smallEnough.size() > 0)
+        {
             return Collections.max(smallEnough, new CompareSizeByArea());
         }
 
         return choices[choices.length - 1];
     }
+
     public class CompareSizeByArea implements Comparator<Size>
     {
         @Override
-        public int compare(Size lhs, Size rhs) {
-            return Long.signum((long) lhs.getWidth() * lhs.getHeight() -
-                    (long) rhs.getWidth() * rhs.getHeight());
+        public int compare(Size lhs, Size rhs)
+        {
+            return Long.signum((long) lhs.getWidth() * lhs.getHeight() - (long) rhs.getWidth() * rhs.getHeight());
         }
 
     }
+
     //Accessing camera
     private void openCamera()
     {
@@ -258,14 +275,22 @@ public class MainActivity extends AppCompatActivity
                 width = jpegSizes[0].getWidth();
                 height = jpegSizes[0].getHeight();
             }
-            ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1);
+            ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 2);
             List<Surface> outputSurfaces = new ArrayList<Surface>(2);
             outputSurfaces.add(reader.getSurface());
             outputSurfaces.add(new Surface(textureView.getSurfaceTexture()));
             final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
             captureBuilder.addTarget(reader.getSurface());
             captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-            final File file = new File(Environment.DIRECTORY_DCIM + "/CameraApp1/pic.jpeg");
+            int rotation = getWindowManager().getDefaultDisplay().getRotation();
+            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
+            final File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM) + "/CameraApp1");
+            if (!dir.exists())
+            {
+                dir.mkdirs();
+            }
+            final int ct = (int) TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis());
+            final File file = new File(dir + "/IMG_" + ct + ".jpg");
             ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener()
             {
                 @Override
