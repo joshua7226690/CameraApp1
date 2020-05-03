@@ -246,6 +246,7 @@ public class MainActivity extends AppCompatActivity
                         ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                         byte[] bytes = new byte[buffer.capacity()];
                         buffer.get(bytes);
+                        save(bytes);
                     }
                     catch (Exception e)
                     {
