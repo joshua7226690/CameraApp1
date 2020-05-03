@@ -1,19 +1,23 @@
 package com.example.cameraapp1;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-
 import android.Manifest;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.pm.PackageManager;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
+import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraCaptureSession;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraDevice;
+import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CameraMetadata;
+import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
 import android.os.Bundle;
-import android.content.pm.PackageManager;
-import android.hardware.camera2.*;
 import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
@@ -25,8 +29,12 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -42,8 +50,6 @@ public class MainActivity extends AppCompatActivity
 {
     private static final int REQUEST_CAMERA_PERMISSION = 0;
     private static final String TAG = "CameraApp1";
-    private String cameraId;
-    private Button captureButton;
     private TextureView textureView;
     protected CameraDevice cameraDevice;
     private Size imageDimension;
@@ -68,11 +74,11 @@ public class MainActivity extends AppCompatActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        textureView = (TextureView) findViewById(R.id.camera_preview);
+        textureView = findViewById(R.id.camera_preview);
         assert textureView != null;
         textureView.setSurfaceTextureListener(textureListener);
 
-        captureButton = (Button) findViewById(R.id.btn_capture);
+        Button captureButton = findViewById(R.id.btn_capture);
         assert captureButton != null;
         captureButton.setOnClickListener(new View.OnClickListener()
         {
@@ -89,12 +95,22 @@ public class MainActivity extends AppCompatActivity
     {
         if (getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY))
         {
-            Log.e(TAG, "This device has camera");
+            Log.i(TAG, "This device has camera");
         }
         else
         {
             Log.e(TAG, "No camera on this device");
-            Toast.makeText(MainActivity.this, "No camera on this device", Toast.LENGTH_LONG).show();
+            AlertDialog.Builder dlgAlert = new AlertDialog.Builder(this);
+            dlgAlert.setMessage("No camera on this device");
+            dlgAlert.setPositiveButton("Close", new DialogInterface.OnClickListener()
+            {
+                @Override
+                public void onClick(DialogInterface dialog, int which)
+                {
+                    System.exit(0);
+                }
+            });
+            dlgAlert.create().show();
         }
     }
 
@@ -106,7 +122,7 @@ public class MainActivity extends AppCompatActivity
         Log.e(TAG, "is camera open");
         try
         {
-            cameraId = manager.getCameraIdList()[0];
+            String cameraId = manager.getCameraIdList()[0];
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             assert map != null;
@@ -200,7 +216,7 @@ public class MainActivity extends AppCompatActivity
         return choices[choices.length - 1];
     }
 
-    public class CompareSizeByArea implements Comparator<Size>
+    public static class CompareSizeByArea implements Comparator<Size>
     {
         @Override
         public int compare(Size lhs, Size rhs)
@@ -273,7 +289,7 @@ public class MainActivity extends AppCompatActivity
                 height = jpegSizes[0].getHeight();
             }
             ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 2);
-            List<Surface> outputSurfaces = new ArrayList<Surface>(2);
+            List<Surface> outputSurfaces = new ArrayList<>(2);
             outputSurfaces.add(reader.getSurface());
             outputSurfaces.add(new Surface(textureView.getSurfaceTexture()));
             final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
@@ -301,6 +317,7 @@ public class MainActivity extends AppCompatActivity
                         byte[] bytes = new byte[buffer.capacity()];
                         buffer.get(bytes);
                         save(bytes);
+                        Toast.makeText(MainActivity.this, "Saved", Toast.LENGTH_SHORT).show();
                     }
                     catch (IOException e)
                     {
