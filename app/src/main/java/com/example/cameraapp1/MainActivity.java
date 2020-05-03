@@ -14,8 +14,10 @@ import android.media.ImageReader;
 import android.os.Bundle;
 import android.content.pm.PackageManager;
 import android.hardware.camera2.*;
+import android.hardware.camera2.CameraCaptureSession;
 import android.os.Environment;
 import android.os.Handler;
+import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
@@ -24,7 +26,6 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -36,6 +37,7 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity
 {
     private static final int REQUEST_CAMERA_PERMISSION = 0;
+    private static final String TAG = "CameraApp1";
     private String cameraId;
     private Button captureButton;
     private TextureView textureView;
@@ -79,6 +81,7 @@ public class MainActivity extends AppCompatActivity
     private void openCamera()
     {
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        Log.e(TAG, "is camera open");
         try
         {
             cameraId = manager.getCameraIdList()[0];
@@ -99,6 +102,7 @@ public class MainActivity extends AppCompatActivity
         {
             e.printStackTrace();
         }
+        Log.e(TAG, "openCamera X");
     }
 
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener()
@@ -134,6 +138,7 @@ public class MainActivity extends AppCompatActivity
         @Override
         public void onOpened(@NonNull CameraDevice camera)
         {
+            Log.e(TAG, "onOpened");
             cameraDevice = camera;
             createCameraPreview();
         }
@@ -179,12 +184,10 @@ public class MainActivity extends AppCompatActivity
                 @Override
                 public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession)
                 {
-                    //The camera is closed
                     if (null == cameraDevice)
                     {
                         return;
                     }
-
                     //When the session is ready, display the preview
                     cameraCaptureSessions = cameraCaptureSession;
                     updatePreview();
@@ -193,6 +196,7 @@ public class MainActivity extends AppCompatActivity
                 @Override
                 public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession)
                 {
+                    Log.e(TAG, "createCameraPreview Configured failed");
                     Toast.makeText(MainActivity.this, "Configuration Changed", Toast.LENGTH_SHORT).show();
                 }
             }, null);
@@ -208,6 +212,7 @@ public class MainActivity extends AppCompatActivity
     {
         if (cameraDevice == null)
         {
+            Log.e(TAG, "cameraDevice is null");
             return;
         }
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
@@ -219,8 +224,8 @@ public class MainActivity extends AppCompatActivity
             {
                 jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);
             }
-            int width = 1280;
-            int height = 720;
+            int width = 720;
+            int height = 1280;
             if (jpegSizes != null && jpegSizes.length > 0)
             {
                 width = jpegSizes[0].getWidth();
@@ -233,7 +238,7 @@ public class MainActivity extends AppCompatActivity
             final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
             captureBuilder.addTarget(reader.getSurface());
             captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-            final File file = new File(Environment.DIRECTORY_DCIM+"/pic.jpg");
+            final File file = new File(Environment.DIRECTORY_DCIM + "/pic.jpg");
             ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener()
             {
                 @Override
@@ -307,6 +312,7 @@ public class MainActivity extends AppCompatActivity
                 @Override
                 public void onConfigureFailed(@NonNull CameraCaptureSession session)
                 {
+                    Log.e(TAG, "capture Configured failed");
                 }
             }, mBackgroundHandler);
         }
@@ -321,7 +327,8 @@ public class MainActivity extends AppCompatActivity
     {
         if (cameraDevice == null)
         {
-            return;
+            Log.e(TAG, "updatePreview error, return");
+
         }
         captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
         try
