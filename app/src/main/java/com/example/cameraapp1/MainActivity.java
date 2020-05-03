@@ -201,17 +201,6 @@ public class MainActivity extends AppCompatActivity
         }
     };
 
-    final CameraCaptureSession.CaptureCallback captureCallbackListener = new CameraCaptureSession.CaptureCallback()
-    {
-        @Override
-        public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result)
-        {
-            super.onCaptureCompleted(session, request, result);
-            Toast.makeText(MainActivity.this, "Saved:" + file, Toast.LENGTH_SHORT).show();
-            createCameraPreview();
-        }
-    };
-
     //Creating camera preview
     protected void createCameraPreview()
     {
@@ -346,7 +335,7 @@ public class MainActivity extends AppCompatActivity
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result)
                 {
                     super.onCaptureCompleted(session, request, result);
-                    Toast.makeText(MainActivity.this, "Saved:" + file, Toast.LENGTH_SHORT).show();
+                    Log.i(TAG, "Saved: " + file);
                     createCameraPreview();
                 }
             };
@@ -368,7 +357,7 @@ public class MainActivity extends AppCompatActivity
                 @Override
                 public void onConfigureFailed(@NonNull CameraCaptureSession session)
                 {
-                    Log.e(TAG, "capture Configured failed");
+                    Log.e(TAG, "capture configured failed");
                 }
             }, mBackgroundHandler);
         }
@@ -411,5 +400,28 @@ public class MainActivity extends AppCompatActivity
             imageReader.close();
             imageReader = null;
         }
+    }
+
+    @Override
+    protected void onResume()
+    {
+        super.onResume();
+        Log.e(TAG, "onResume");
+        if (textureView.isAvailable())
+        {
+            openCamera();
+        }
+        else
+        {
+            textureView.setSurfaceTextureListener(textureListener);
+        }
+    }
+
+    @Override
+    protected void onPause()
+    {
+        Log.e(TAG, "onPause");
+        closeCamera();
+        super.onPause();
     }
 }
